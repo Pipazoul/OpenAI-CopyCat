@@ -2,7 +2,9 @@
 	import { onMount } from "svelte";
 
 
-    let apiUrl = "http://178.116.94.163:38001"
+
+    let apiUrl = "http://178.116.94.163:38001/bloomz/run/predict"
+    
 
     let pastMessage: Array = [
         {content: "Hello I am a conversation assistant, I am here to help you and answer your problems what can I do for you?", sender: "ai"},
@@ -13,6 +15,12 @@
     let bloomParams = [4000, 1, 50, 0.5]
 
     onMount(async () => {
+
+        // get qpi url from  local storage
+        if (localStorage.getItem("apiUrl")) {
+            apiUrl = localStorage.getItem("apiUrl")
+        }
+        
 
     })
 
@@ -36,7 +44,7 @@
             console.log("requets message",requestMessage)
             requestMessage = requestMessage + "AI: "
             // fetch post route with data array [ userMsg, 30, 1, 50, 0.50 ]
-            fetch(apiUrl + "/bloomz/run/predict" , {
+            fetch(apiUrl , {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -59,13 +67,18 @@
         }
     }
 
+    function saveApiUrl() {
+        console.log(apiUrl)
+        localStorage.setItem("apiUrl", apiUrl)
+    }
+
 </script>
 <section class="flex lg:flex-row h-screen flex-col">
     <div class="bg-slate-800 text-white lg:w-2/12">
         <ul>
             <li>New Chat</li>
             <li>LOL</li>
-            <li><input bind:value={apiUrl} class="text-black w-full"></li>
+            <li><input bind:value={apiUrl} class="text-black w-full" on:change={(e) => {saveApiUrl()}} ></li>
         </ul>
     </div>
     <div class="lg:w-10/12 bg-gray-400 h-screen">
