@@ -3,7 +3,7 @@
 
 
 
-    let apiUrl = "http://178.116.94.163:38001/bloomz/run/predict"
+    let apiUrl = "http://31.12.82.146:12858/bloom/run/predict"
     
 
     let pastMessage: Array = [
@@ -50,7 +50,7 @@
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    "data": [requestMessage, 4000, 1, 50, 0.5]
+                    "data": [requestMessage, 4000, 0.7, 30, 0.5]
                 })
             })
             .then(res => res.json())
