@@ -5,10 +5,12 @@
     let apiUrl = "http://178.116.94.163:38001"
 
     let pastMessage: Array = [
-        {content: "Bonjour je suis un assistant conversation, je suis la pour vous aider et répondre a vos problèmes que puis-je faire pour vous ?", sender: "ai"},
+        {content: "Hello I am a conversation assistant, I am here to help you and answer your problems what can I do for you?", sender: "ai"},
     ]
     let userMsg = ""
     
+    // bloom params topk top p temperature token
+    let bloomParams = [4000, 1, 50, 0.5]
 
     onMount(async () => {
 
@@ -33,14 +35,14 @@
             })
             console.log("requets message",requestMessage)
             requestMessage = requestMessage + "AI: "
-            // fetch post route with data array [ userMsg, 30, 1, 50, 0 ]
+            // fetch post route with data array [ userMsg, 30, 1, 50, 0.50 ]
             fetch(apiUrl + "/bloomz/run/predict" , {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    "data": [requestMessage, 4000, 1, 50, 0]
+                    "data": [requestMessage, 4000, 1, 50, 0.5]
                 })
             })
             .then(res => res.json())
