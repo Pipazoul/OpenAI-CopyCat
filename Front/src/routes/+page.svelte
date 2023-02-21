@@ -33,20 +33,26 @@
             })
             console.log("requets message",requestMessage)
             requestMessage = requestMessage + "AI: "
-            // fetch post route with data array [ userMsg, 30, 1, 50, 0.95 ]
+            // fetch post route with data array [ userMsg, 30, 1, 50, 0 ]
             fetch(apiUrl + "/bloomz/run/predict" , {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    "data": [requestMessage, 4000, 1, 50, 0.95]
+                    "data": [requestMessage, 4000, 1, 50, 0]
                 })
             })
             .then(res => res.json())
             .then(data => {
                 console.log(data)
-                pastMessage = [...pastMessage, {content: data.data[0], sender: "human"}]
+
+                // extact the last message from the response and add it to the pastMessage array for ex Salut I'm your AI
+                let endToText = data.data[0].split("\n").pop().split("AI: ").pop()
+
+                console.log(endToText)
+                pastMessage = [...pastMessage, {content: endToText, sender: "ai"}]
+
             })
         }
     }
