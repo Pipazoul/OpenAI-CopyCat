@@ -1,0 +1,20 @@
+version: '3'
+services:
+  back:
+    container_name: lamacpp
+    build:
+      context: Back/
+      dockerfile: Dockerfile
+    restart: always
+    volumes:
+      - ./back/models:/app/fastLLaMa/models/
+    ports:
+      - 8000:8000
+  front:
+    container_name: lamacpp-front
+    build:
+      context: Front/
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - 3000:5173

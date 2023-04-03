@@ -1,0 +1,15 @@
+version: '3'
+services:
+  webui:
+    container_name: lamacpp
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    volumes:
+      - ./models:/app/fastLLaMa/models/
+    ports:
+      - 8000:8000
+    #command: python gradio_test.py > url.txt
+    #command: tail -F anything
+    #tty: true  

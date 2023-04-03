@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { onMount } from "svelte";
 
+    import { PUBLIC_WS_URL } from '$env/static/public';
 
 
-    let apiUrl = "http://31.12.82.146:12858/bloom/run/predict"
-    
 
     let pastMessage: Array = [
         {content: "Hello I am a conversation assistant, I am here to help you and answer your problems what can I do for you?", sender: "ai"},
@@ -15,11 +14,6 @@
     let bloomParams = [4000, 1, 50, 0.5]
 
     onMount(async () => {
-
-        // get qpi url from  local storage
-        if (localStorage.getItem("apiUrl")) {
-            apiUrl = localStorage.getItem("apiUrl")
-        }
         
 
     })
@@ -28,49 +22,54 @@
     function sendMsg(e) {
         console.log(e.key)
         if (e.key === "Enter") {
-            pastMessage = [...pastMessage, {content: userMsg, sender: "human"}]
-            userMsg = ""
-            console.log(pastMessage)
+          
+            
 
-            // request message take avery message on the pastMessage array and send it to the api AI: msg \n HUMAN: msg
-            let requestMessage = ""
-            pastMessage.forEach((msg) => {
-                if (msg.sender === "human") {
-                    requestMessage = requestMessage + "HUMAN: " + msg.content + "\n"
-                } else {
-                    requestMessage = requestMessage + "AI: " + msg.content + "\n"
-                }
-            })
-            console.log("requets message",requestMessage)
-            requestMessage = requestMessage + "AI: "
-            // fetch post route with data array [ userMsg, 30, 1, 50, 0.50 ]
-            fetch(apiUrl , {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    "data": [requestMessage, 4000, 0.7, 30, 0.5]
+            let ws = new WebSocket("ws://" + PUBLIC_WS_URL);
+
+            
+            ws.onopen = function (e) {
+                console.log("Connection established!");
+                pastMessage = [...pastMessage, {content: userMsg, sender: "human"}]
+                userMsg = ""
+                console.log(pastMessage)
+
+                // request message take avery message on the pastMessage array and send it to the api AI: msg \n HUMAN: msg
+                let requestMessage = ""
+                pastMessage.forEach((msg) => {
+                    if (msg.sender === "human") {
+                        requestMessage = requestMessage + "HUMAN: " + msg.content + "\n"
+                    } else {
+                        requestMessage = requestMessage + "AI: " + msg.content + "\n"
+                    }
                 })
-            })
-            .then(res => res.json())
-            .then(data => {
-                console.log(data)
+                console.log("requets message",requestMessage)
+                requestMessage = requestMessage + "AI: "
+                //send text to websocket
+                ws.send(requestMessage)
 
-                // extact the last message from the response and add it to the pastMessage array for ex Salut I'm your AI
-                let endToText = data.data[0].split("\n").pop().split("AI: ").pop()
+                // wait for response and add message to the same pastMessage array index
+                
+                // append empty message to the pastMessage array
+                pastMessage = [...pastMessage, {content: "", sender: "ai"}]
 
-                console.log(endToText)
-                pastMessage = [...pastMessage, {content: endToText, sender: "ai"}]
+                // wait for response
+                let buffer = ""
+                ws.onmessage = function (e) {
+                    console.log("Message from server ", e.data);
+                    // update the last message with the response but keep last content
+                    buffer=buffer+e.data
+                    pastMessage[pastMessage.length-1].content = buffer
+                    
+                };
+               
+               
+            };
 
-            })
         }
+        
     }
 
-    function saveApiUrl() {
-        console.log(apiUrl)
-        localStorage.setItem("apiUrl", apiUrl)
-    }
 
 </script>
 <section class="flex lg:flex-row h-screen flex-col">
@@ -78,7 +77,6 @@
         <ul>
             <li>New Chat</li>
             <li>LOL</li>
-            <li><input bind:value={apiUrl} class="text-black w-full" on:change={(e) => {saveApiUrl()}} ></li>
         </ul>
     </div>
     <div class="lg:w-10/12 bg-gray-400 h-screen">
