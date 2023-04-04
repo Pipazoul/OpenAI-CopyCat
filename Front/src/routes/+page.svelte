@@ -25,7 +25,7 @@
           
             
 
-            let ws = new WebSocket("ws://" + PUBLIC_WS_URL);
+            let ws = new WebSocket("wss://" + PUBLIC_WS_URL);
 
             
             ws.onopen = function (e) {
