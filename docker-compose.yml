@@ -1,13 +1,13 @@
 version: '3'
 services:
-  back:
-    container_name: lamacpp
+  webui:
+    container_name: lamacpp-back
     build:
       context: Back/
       dockerfile: Dockerfile
     restart: always
     volumes:
-      - ./back/models:/app/fastLLaMa/models/
+      - ./Back/models:/app/models/
     ports:
       - 8000:8000
   front:

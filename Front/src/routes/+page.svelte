@@ -1,31 +1,32 @@
 <script lang="ts">
 	import { onMount } from "svelte";
-
     import { PUBLIC_WS_URL } from '$env/static/public';
-
-
 
     let pastMessage: Array = [
         {content: "Hello I am a conversation assistant, I am here to help you and answer your problems what can I do for you?", sender: "ai"},
     ]
     let userMsg = ""
-    
-    // bloom params topk top p temperature token
-    let bloomParams = [4000, 1, 50, 0.5]
 
     onMount(async () => {
-        
-
+        // get the past message from the local storage
+        let pastMessageStorage = localStorage.getItem("pastMessage")
+        if (pastMessageStorage) {
+            pastMessage = JSON.parse(pastMessageStorage)
+        }
     })
 
-
     function sendMsg(e) {
-        console.log(e.key)
         if (e.key === "Enter") {
           
-            
+            const params = {
+                temperature: 1.5,
+                num_tokens: 300,
+                stop_word: "<|assistant|>, <|prompter|>",
+                top_p: 1.0,
+                repetition_p: 1.0,
+            };
 
-            let ws = new WebSocket("wss://" + PUBLIC_WS_URL);
+            let ws = new WebSocket(PUBLIC_WS_URL);
 
             
             ws.onopen = function (e) {
@@ -38,17 +39,21 @@
                 let requestMessage = ""
                 pastMessage.forEach((msg) => {
                     if (msg.sender === "human") {
-                        requestMessage = requestMessage + "HUMAN: " + msg.content + "\n"
+                        requestMessage = requestMessage + "<|prompter|>" + msg.content + "\n"
                     } else {
-                        requestMessage = requestMessage + "AI: " + msg.content + "\n"
+                        requestMessage = requestMessage + "<|assistant|>" + msg.content + "\n"
                     }
                 })
                 console.log("requets message",requestMessage)
-                requestMessage = requestMessage + "AI: "
-                //send text to websocket
-                ws.send(requestMessage)
+                requestMessage = requestMessage + "<|assistant|>"
 
-                // wait for response and add message to the same pastMessage array index
+                const msg = {
+                    params: JSON.stringify(params),
+                    text: requestMessage
+                };
+
+                //send text to websocket
+                ws.send(JSON.stringify(msg));
                 
                 // append empty message to the pastMessage array
                 pastMessage = [...pastMessage, {content: "", sender: "ai"}]
@@ -61,13 +66,21 @@
                     buffer=buffer+e.data
                     pastMessage[pastMessage.length-1].content = buffer
                     
-                };
-               
-               
+                };   
+
+                // save all the past message in the local storage
+                localStorage.setItem("pastMessage", JSON.stringify(pastMessage))
             };
 
         }
         
+    }
+
+    function clearPastMessage() {
+        pastMessage = [
+            {content: "Hello I am a conversation assistant, I am here to help you and answer your problems what can I do for you?", sender: "ai"},
+        ]
+        localStorage.setItem("pastMessage", JSON.stringify(pastMessage))
     }
 
 
@@ -76,7 +89,7 @@
     <div class="bg-slate-800 text-white lg:w-2/12">
         <ul>
             <li>New Chat</li>
-            <li>LOL</li>
+            <li on:click={() => {clearPastMessage()}}>Clear Chat</li>
         </ul>
     </div>
     <div class="lg:w-10/12 bg-gray-400 h-screen">

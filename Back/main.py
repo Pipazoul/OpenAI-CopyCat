@@ -1,27 +1,12 @@
-from typing import List
+import json
+import argparse
+
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-import os
-import json
-import sys
 import asyncio
-sys.path.append("./build/")
-import fastLlama
-import threading
-import queue
 import traceback
+from llama_cpp import Llama
 
-
-MODEL_PATH = "models/7B/ggml-alpaca-7b-q4.bin"
-
-model = fastLlama.Model(
-        id="LLAMA-7B",
-        path=MODEL_PATH, #path to model
-        num_threads=8, #number of threads to use
-        n_ctx=1024, #context size of model
-        last_n_size=64, #size of last n tokens (used for repetition penalty) (Optional)
-        seed=0 #seed for random number generator (Optional)
-    )
 
 app = FastAPI()
 
@@ -35,73 +20,67 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+llm = Llama(model_path="models/7B/qunt4_0.bin")
+
+
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
 
+
 @app.websocket("/generate")
-async def generate_text(websocket: WebSocket):
+async def generate_text(websocket: WebSocket, num_tokens: int = 200, top_p: float = 0.85, temp: float = 0.7, repetition_p: float = 1.0, stop_word: str = "HUMAN:"):
     await websocket.accept()
-
-    text = await websocket.receive_text()
-
-    # Define a queue to store the generated tokens
-    token_queue = queue.Queue()
-
-    # Define a log file to store any errors that occur in the model thread
     log_file = open("model_error.log", "a")
+    
+    # get websocket text message
+    data = await websocket.receive_text()
+    print("Received: {}".format(data))
+    text = json.loads(data)["text"]
+    params = json.loads(data)["params"]
+    temp = json.loads(params)["temperature"]
+    top_p = json.loads(params)["top_p"]
+    repetition_p = json.loads(params)["repetition_p"]
+    num_tokens = json.loads(params)["num_tokens"]
+    stop_word = json.loads(params)["stop_word"]
+    # convert stop word to list
+    stop_word = stop_word.split(",")
 
-    def stream_token(x: str) -> None:
-        """
-        This function is called by the llama library to stream tokens
-        """
-        token_queue.put(x)
+    # print text length
+    print("Text length: {}".format(len(text)))
 
-    # Define a function to run the model in a separate thread
-    def generate(text):
+    # if text length is greater than 800, truncate the older sentences 
+    if len(text) > 800:
+        text = text[-400:]
+    
+
+
+    async def generate(text, num_tokens=num_tokens, top_p=top_p, temp=temp, repetition_p=repetition_p, stop_word=stop_word):
         try:
-            res = model.ingest(text)
-
-            model.generate(
-                num_tokens=200, 
-                top_p=0.85, #top p sampling (Optional)
-                temp=0.7, #temperature (Optional)
-                repeat_penalty=1.0, #repetition penalty (Optional)
-                streaming_fn=stream_token, #function to stream tokens (Optional)
-                stop_word=["HUMAN:"] #stop generation when this word is encountered (Optional)
+            
+            print("Generating...")
+            print("Text: {}".format(text))
+            print("Num tokens: {}".format(num_tokens))
+            print("Top p: {}".format(top_p))
+            print("Temp: {}".format(temp))
+            print("Repetition penalty: {}".format(repetition_p))
+            print("Stop word: {}".format(stop_word))
+            stream = llm(
+                text,
+                max_tokens=num_tokens,
+                #top_p=top_p,
+                #temperature=temp,
+                stop=stop_word,
+                stream=True,
             )
+            for output in stream:
+                #print(json.dumps(output, indent=2))
+                await websocket.send_text(output["choices"][0]["text"])
+                
         except Exception as e:
-            # Write the error message and traceback to the log file
             log_file.write("Error: {}\n".format(e))
             log_file.write("Traceback:\n")
             traceback.print_exc(file=log_file)
             print("Error: {}".format(e))
 
-            # Restart the model thread
-            generate(text)
-
-    # Start the model in a separate thread 
-    try: 
-        model_thread = threading.Thread(target=generate, args=(text,))
-        model_thread.start()
-    except Exception as e:
-        # Write the error message to the WebSocket and the log file
-        error_message = "Error: {}".format(e)
-        log_file.write(error_message)
-        print(error_message)
-        await websocket.send_text(error_message)
-
-    # Stream the generated tokens via the WebSocket
-    while True:
-        try:
-            token = token_queue.get(block=False)
-            await websocket.send_text(token)
-        except queue.Empty:
-            # If there are no more tokens in the queue, check if
-            # the model thread is still running
-            if not model_thread.is_alive():
-                break
-            else:
-                # If the model thread is still running, wait 0.1 seconds
-                # before checking the queue again
-                await asyncio.sleep(0.1)
+    await generate(text)

@@ -1,27 +1,10 @@
 FROM python:alpine
 
-# install cmake and git gcc g++ make
-RUN apk add --no-cache make cmake git gcc g++
-
 WORKDIR /app
 
-RUN git clone https://github.com/PotatoSpudowski/fastLLaMa
+RUN apk add cmake g++ make
 
-WORKDIR /app/fastLLaMa
-
-RUN pip install py-cpuinfo
-
-RUN mkdir build
-
-WORKDIR /app/fastLLaMa/build
-
-RUN cmake ..
-
-RUN make
-
-
-
-WORKDIR /app/fastLLaMa
+RUN pip install llama-cpp-python
 
 COPY main.py .
 COPY entrypoint.sh .
